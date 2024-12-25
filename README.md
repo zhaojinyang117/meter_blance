@@ -18,16 +18,14 @@
 - ChromeDriver
 
 ### 必需的Python包
-```
-bash
+```bash
 pip install selenium
 ```
 
 ## 配置说明
 ### 1. Gmail邮箱配置
 在`send_alert_email`函数中配置以下参数：
-```
-python
+```python
 sender_email = "your_email@gmail.com"
 sender_password = "your_app_password" # Gmail应用专用密码
 receiver_email = "receiver@example.com"
@@ -35,8 +33,7 @@ receiver_email = "receiver@example.com"
 
 ### 2. 电表参数配置
 在`get_meter_balance`函数中配置以下参数：
-```
-python
+```python
 params = {
 "wechatUserOpenid": "你的openid",
 "meterId": "电表ID",
@@ -47,15 +44,14 @@ params = {
 ## 使用方法
 1. 克隆项目到本地
 2. 安装依赖：
-```
-bash
+```bash
 pip install selenium
 ```
 
 3. 配置Gmail和电表参数
 4. 运行脚本：
 
-```
+```bash
 python3 meter balance.py
 ```
 
