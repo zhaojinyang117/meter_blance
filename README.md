@@ -32,7 +32,7 @@ receiver_email = "receiver@example.com"
 ```
 
 ### 2. 电表参数配置
-在`get_meter_balance`函数中配置以下参数：
+在`get_meter_balance`函数中配置以下参数：（从链接中获取）
 ```python
 params = {
 "wechatUserOpenid": "你的openid",
