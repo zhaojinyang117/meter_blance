@@ -1,6 +1,6 @@
 from selenium import webdriver
-from selenium.webdriver.chrome.service import Service as ChromeService
-from selenium.webdriver.chrome.options import Options as ChromeOptions
+from selenium.webdriver.edge.service import Service as EdgeService
+from selenium.webdriver.edge.options import Options as EdgeOptions
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -8,6 +8,52 @@ import time
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import logging
+from datetime import datetime
+import os
+
+def setup_logging():
+    try:
+        # 获取当前脚本所在目录
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        print(f"当前目录: {current_dir}")  # 调试信息
+        
+        log_filename = os.path.join(current_dir, "meter_balance.log")
+        print(f"尝试创建/访问日志文件: {log_filename}")  # 调试信息
+        
+        # 创建分隔符
+        separator = "\n" + "="*50 + "\n" + \
+                    f"开始新的查询 - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n" + \
+                    "="*50 + "\n"
+        
+        # 如果日志文件不存在，创建��个新文件
+        if not os.path.exists(log_filename):
+            print("日志文件不存在，尝试创建新文件...")  # 调试信息
+            with open(log_filename, 'w', encoding='utf-8') as f:
+                f.write(f"电表查询日志文件 - 创建于 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(separator)
+                print("成功创建日志文件")  # 调试信息
+        else:
+            print("日志文件已存在，追加内容...")  # 调试信息
+            with open(log_filename, 'a', encoding='utf-8') as f:
+                f.write(separator)
+                print("成功追加分隔符")  # 调试信息
+
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(levelname)s - %(message)s',
+            handlers=[
+                logging.FileHandler(log_filename, encoding='utf-8'),
+                logging.StreamHandler()
+            ]
+        )
+        return logging.getLogger(__name__)
+        
+    except Exception as e:
+        print(f"设置日志时出错: {str(e)}")
+        print(f"错误类型: {type(e)}")
+        print(f"错误详情: {e.__dict__}")
+        raise  # 重新抛出异常以便查看完整的错误堆栈
 
 def send_alert_email(balance):
     # Gmail 邮箱配置
@@ -39,7 +85,7 @@ def get_meter_balance():
     driver = None
     retry_count = 3  # 设置重试次数
     
-    options = ChromeOptions()
+    options = EdgeOptions()
     options.add_argument('--headless')
     options.add_argument('--disable-gpu')
     options.add_argument('--no-sandbox')
@@ -51,12 +97,12 @@ def get_meter_balance():
     options.add_argument('--ignore-certificate-errors')
     options.add_argument('--disable-infobars')
     
-    service = ChromeService()
+    service = EdgeService()
     
     for attempt in range(retry_count):
         try:
             print(f"尝试第 {attempt + 1} 次连接...")
-            driver = webdriver.Chrome(service=service, options=options)
+            driver = webdriver.Edge(service=service, options=options)
             driver.set_page_load_timeout(300)
             driver.set_script_timeout(300)
             
@@ -124,5 +170,10 @@ def get_meter_balance():
     return None  # 添加一个默认返回值
 
 if __name__ == "__main__":
-    result = get_meter_balance()
-    print(f"最终结果: {result}")
+    try:
+        logger = setup_logging()  # 首先设置日志
+        logger.info("开始执行电表余额查询...")
+        result = get_meter_balance()
+        logger.info(f"查询完成，最终结果: {result}")
+    except Exception as e:
+        print(f"程序执行出错: {str(e)}")
