@@ -9,6 +9,7 @@ on:
 jobs:
   check-meter-balance:
     runs-on: ubuntu-latest
+    environment: 电表  # 指定使用哪个环境
     
     steps:
     - name: 检出代码
@@ -29,12 +30,12 @@ jobs:
       
     - name: 运行电表余额查询脚本
       env:
-        SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
-        SENDER_PASSWORD: ${{ secrets.SENDER_PASSWORD }}
-        RECEIVER_EMAIL: ${{ secrets.RECEIVER_EMAIL }}
-        METER_OPENID: ${{ secrets.METER_OPENID }}
-        METER_ID: ${{ secrets.METER_ID }}
-        METER_TYPE_REMARK: ${{ secrets.METER_TYPE_REMARK }}
+        SENDER_EMAIL: ${{ vars.SENDER_EMAIL }}
+        SENDER_PASSWORD: ${{ vars.SENDER_PASSWORD }}
+        RECEIVER_EMAIL: ${{ vars.RECEIVER_EMAIL }}
+        METER_OPENID: ${{ vars.METER_OPENID }}
+        METER_ID: ${{ vars.METER_ID }}
+        METER_TYPE_REMARK: ${{ vars.METER_TYPE_REMARK }}
       run: python meter_balance_action.py
       
     - name: 上传日志
