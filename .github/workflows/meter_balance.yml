@@ -28,7 +28,14 @@ jobs:
     - name: 安装Microsoft Edge WebDriver
       uses: browser-actions/setup-edge@latest
       
-    - name: 验证环境变量
+    - name: 设置环境变量并验证
+      env:
+        SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
+        SENDER_PASSWORD: ${{ secrets.SENDER_PASSWORD }}
+        RECEIVER_EMAIL: ${{ secrets.RECEIVER_EMAIL }}
+        METER_OPENID: ${{ secrets.METER_OPENID }}
+        METER_ID: ${{ secrets.METER_ID }}
+        METER_TYPE_REMARK: ${{ secrets.METER_TYPE_REMARK }}
       run: |
         echo "检查环境变量是否设置:"
         if [ -n "$SENDER_EMAIL" ]; then echo "SENDER_EMAIL: 已设置"; else echo "SENDER_EMAIL: 未设置"; fi
@@ -37,6 +44,13 @@ jobs:
         if [ -n "$METER_OPENID" ]; then echo "METER_OPENID: 已设置"; else echo "METER_OPENID: 未设置"; fi
         if [ -n "$METER_ID" ]; then echo "METER_ID: 已设置"; else echo "METER_ID: 未设置"; fi
         if [ -n "$METER_TYPE_REMARK" ]; then echo "METER_TYPE_REMARK: 已设置"; else echo "METER_TYPE_REMARK: 未设置"; fi
+        
+        # 检查是否所有必需的变量都已设置
+        if [ -z "$SENDER_EMAIL" ] || [ -z "$SENDER_PASSWORD" ] || [ -z "$RECEIVER_EMAIL" ] || \
+           [ -z "$METER_OPENID" ] || [ -z "$METER_ID" ] || [ -z "$METER_TYPE_REMARK" ]; then
+          echo "错误：部分环境变量未设置，请检查GitHub Secrets配置"
+          exit 1
+        fi
       
     - name: 运行电表余额查询脚本
       env:
