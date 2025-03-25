@@ -59,7 +59,7 @@ def send_alert_email(balance):
     # 检查配置是否完整
     if not sender_email or not sender_password or not receiver_email:
         logging.warning("邮箱配置不完整，无法发送警告邮件")
-        return
+        return False
 
     # 创建邮件内容
     message = MIMEMultipart()
@@ -110,11 +110,14 @@ def get_meter_balance():
     options.add_argument("--disable-extensions")
     options.add_argument("--disable-logging")
     options.add_argument("--disable-logging-redirect")
-    options.add_argu'ent("--single-process")
-    options'add_argument("--ignore-certificate-errors")
-    options.add_argument("--disable-infobars")'    options.add'arg'ment("--window'size=1920,1080")  # 设置窗口大小
+    options.add_argument("--single-process")
+    options.add_argument("--ignore-certificate-errors")
+    options.add_argument("--disable-infobars")
+    options.add_argument("--window-size=1920,1080")  # 设置窗口大小
     options.add_argument("--start-maximized")  # 最大化窗口
-    options.add_argument("--disable-blink-features=AutomationControlled")  # 禁用自动化标志
+    options.add_argument(
+        "--disable-blink-features=AutomationControlled"
+    )  # 禁用自动化标志
 
     service = EdgeService()
 
@@ -134,7 +137,7 @@ def get_meter_balance():
                 time.sleep(5)  # 等待之前的浏览器实例完全关闭
 
             logger.info(f"尝试第 {attempt + 1} 次连接...")
-            driver = webdriver.Edge(ser            vice=service, options=options)
+            driver = webdriver.Edge(service=service, options=options)
             driver.set_page_load_timeout(300)
             driver.set_script_timeout(300)
 
@@ -146,7 +149,7 @@ def get_meter_balance():
                 "elemeterTypeRemark": elemeter_type_remark,
             }
 
-            full_url = f"{url}?{'&'.join([f'{k}={v}' for k, v in params.            items()])}"
+            full_url = f"{url}?{'&'.join([f'{k}={v}' for k, v in params.items()])}"
 
             # 尝试多次加载页面
             page_load_attempts = 3
@@ -157,8 +160,10 @@ def get_meter_balance():
                 except Exception as e:
                     if page_attempt == page_load_attempts - 1:
                         raise
-                    log            f"页面'载败pt ' 1}/{pag'_load_attempts})"
-                     time.sleep(5)
+                    logger.warning(
+                        f"页面加载失败 ({page_attempt + 1}/{page_load_attempts})"
+                    )
+                    time.sleep(5)
 
             logger.info("等待页面初始加载...")
             time.sleep(15)
@@ -172,36 +177,42 @@ def get_meter_balance():
                         "/html/body/uni-app/uni-page/uni-page-wrapper/uni-page-body/uni-view/uni-view[1]/uni-button",
                     )
                 )
-                        )
+            )
 
             logger.info("找到查询按钮，准备点击...")
-            # 使用JavaScript点击按钮
-            r("arguments[0].click();", query_button)
+            try:
+                # 使用JavaScript点击按钮
+                driver.execute_script("arguments[0].click();", query_button)
             except:
-                # 如果JavaScript点击        query_button.click()
+                # 如果JavaScript点击失败，尝试直接点击
+                query_button.click()
+
             logger.info("已点击查询按钮")
             time.sleep(8)
 
-           logger.i            nfo("尝试获取电表剩余值...")
+            logger.info("尝试获取电表剩余值...")
             try:
                 input_element = wait.until(
                     EC.presence_of_element_located(
                         (By.CSS_SELECTOR, "uni-input input.uni-input-input")
                     )
                 )
-                                    balance = input_element.get_attribute("value")
+
+                balance = input_element.get_attribute("value")
 
                 if balance:
-                    logger.info(f"获取到电表            剩余值: {balance}")
+                    logger.info(f"获取到电表剩余值: {balance}")
                     # 转换余额为浮点数并检查
                     balance_float = float(balance)
-                    if balance_flo            at < 50:
+                    if balance_float < 50:  # 设置为2度阈值，与README中描述一致
                         logger.warning(f"电量低于50度 ({balance})，发送警告邮件...")
                         send_alert_email(balance)
                     return balance
                 else:
-                    logger.warning("未能获取到           raise Exception("电表  exce().performpt ption as e:
-]     logger.eor(f"获取电表余额时出错: {str(e)}")
+                    logger.warning("未能获取到电表余额值")
+                    raise Exception("电表余额获取失败")
+            except Exception as e:
+                logger.error(f"获取电表余额时出错: {str(e)}")
                 raise
 
         except Exception as e:
@@ -209,9 +220,9 @@ def get_meter_balance():
             if attempt < retry_count - 1:
                 logger.info("等待10秒后重试...")
                 time.sleep(10)
-                                else:
+            else:
                 logger.error("已达到最大重试次数，退出...")
-                                return None
+                return None
 
         finally:
             try:
@@ -229,18 +240,18 @@ def main():
     """主函数"""
     try:
         # 设置日志
-        logger = setuplogging()
-        l                ogger.info("=== GitHub Actions 电表余额查询脚本开始执行 ===")
+        logger = setup_logging()
+        logger.info("=== GitHub Actions 电表余额查询脚本开始执行 ===")
         logger.info(f"执行时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
         # 检查必要的环境变量
-        requi"METER_OPENID",
-            "METER_ID"),
-            "METER_TYPE_breakEMARK",
-            "except:
-SENDIL",
-            "SEEonPinueSSWORD",
-            "RECIL",
+        required_env_vars = [
+            "METER_OPENID",
+            "METER_ID",
+            "METER_TYPE_REMARK",
+            "SENDER_EMAIL",
+            "SENDER_PASSWORD",
+            "RECEIVER_EMAIL",
         ]
 
         missing_vars = []
