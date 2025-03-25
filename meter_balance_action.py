@@ -113,6 +113,11 @@ def get_meter_balance():
     options.add_argument("--single-process")
     options.add_argument("--ignore-certificate-errors")
     options.add_argument("--disable-infobars")
+    options.add_argument("--window-size=1920,1080")  # 设置窗口大小
+    options.add_argument("--start-maximized")  # 最大化窗口
+    options.add_argument(
+        "--disable-blink-features=AutomationControlled"
+    )  # 禁用自动化标志
 
     service = EdgeService()
 
@@ -123,6 +128,14 @@ def get_meter_balance():
 
     for attempt in range(retry_count):
         try:
+            if driver:
+                try:
+                    driver.quit()
+                except:
+                    pass
+                driver = None
+                time.sleep(5)  # 等待之前的浏览器实例完全关闭
+
             logger.info(f"尝试第 {attempt + 1} 次连接...")
             driver = webdriver.Edge(service=service, options=options)
             driver.set_page_load_timeout(300)
@@ -137,7 +150,20 @@ def get_meter_balance():
             }
 
             full_url = f"{url}?{'&'.join([f'{k}={v}' for k, v in params.items()])}"
-            driver.get(full_url)
+
+            # 尝试多次加载页面
+            page_load_attempts = 3
+            for page_attempt in range(page_load_attempts):
+                try:
+                    driver.get(full_url)
+                    break
+                except Exception as e:
+                    if page_attempt == page_load_attempts - 1:
+                        raise
+                    logger.warning(
+                        f"页面加载失败，尝试重新加载... ({page_attempt + 1}/{page_load_attempts})"
+                    )
+                    time.sleep(5)
 
             logger.info("等待页面初始加载...")
             time.sleep(15)
@@ -154,35 +180,41 @@ def get_meter_balance():
             )
 
             logger.info("找到查询按钮，准备点击...")
-            driver.execute_script("arguments[0].click();", query_button)
+            # 使用JavaScript点击按钮
+            try:
+                driver.execute_script("arguments[0].click();", query_button)
+            except:
+                # 如果JavaScript点击失败，尝试直接点击
+                query_button.click()
             logger.info("已点击查询按钮")
             time.sleep(8)
 
             logger.info("尝试获取电表剩余值...")
-            input_element = wait.until(
-                EC.presence_of_element_located(
-                    (By.CSS_SELECTOR, "uni-input input.uni-input-input")
+            try:
+                input_element = wait.until(
+                    EC.presence_of_element_located(
+                        (By.CSS_SELECTOR, "uni-input input.uni-input-input")
+                    )
                 )
-            )
-            balance = input_element.get_attribute("value")
+                balance = input_element.get_attribute("value")
 
-            if balance:
-                logger.info(f"获取到电表剩余值: {balance}")
-                # 转换余额为浮点数并检查
-                balance_float = float(balance)
-                if balance_float < 50:
-                    logger.warning(f"电量低于50度 ({balance})，发送警告邮件...")
-                    send_alert_email(balance)
-                return balance
-            else:
-                logger.warning("未能获取到电表剩余值")
-                return None
+                if balance:
+                    logger.info(f"获取到电表剩余值: {balance}")
+                    # 转换余额为浮点数并检查
+                    balance_float = float(balance)
+                    if balance_float < 50:
+                        logger.warning(f"电量低于50度 ({balance})，发送警告邮件...")
+                        send_alert_email(balance)
+                    return balance
+                else:
+                    logger.warning("未能获取到电表剩余值")
+                    raise Exception("电表余额为空")
+            except Exception as e:
+                logger.error(f"获取电表余额时出错: {str(e)}")
+                raise
 
         except Exception as e:
             logger.error(f"第 {attempt + 1} 次尝试失败: {str(e)}")
-            if driver:
-                driver.quit()
-                driver = None
             if attempt < retry_count - 1:
                 logger.info("等待10秒后重试...")
                 time.sleep(10)
@@ -191,10 +223,13 @@ def get_meter_balance():
                 return None
 
         finally:
-            if driver:
-                logger.info("关闭浏览器...")
-                driver.quit()
-                driver = None
+            try:
+                if driver:
+                    logger.info("关闭浏览器...")
+                    driver.quit()
+            except Exception as e:
+                logger.error(f"关闭浏览器时出错: {str(e)}")
+            driver = None
 
     return None
 
