@@ -4,6 +4,12 @@ from selenium.webdriver.edge.options import Options as EdgeOptions
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import (
+    WebDriverException,
+    TimeoutException,
+    NoSuchElementException,
+    SessionNotCreatedException,
+)
 import time
 import smtplib
 from email.mime.text import MIMEText
@@ -12,6 +18,7 @@ import logging
 from datetime import datetime
 import os
 import sys
+import traceback
 
 
 def setup_logging():
@@ -88,6 +95,20 @@ def send_alert_email(balance):
         return False
 
 
+def safely_quit_driver(driver, logger):
+    """安全关闭WebDriver"""
+    if driver:
+        try:
+            logger.info("正在安全关闭浏览器...")
+            driver.quit()
+            logger.info("浏览器已安全关闭")
+        except Exception as e:
+            logger.error(f"关闭浏览器时出错: {str(e)}")
+        finally:
+            return None
+    return None
+
+
 def get_meter_balance():
     """查询电表余额"""
     driver = None
@@ -119,7 +140,12 @@ def get_meter_balance():
         "--disable-blink-features=AutomationControlled"
     )  # 禁用自动化标志
 
-    service = EdgeService()
+    # 增加稳定性参数
+    options.add_argument("--disable-features=NetworkService")
+    options.add_argument("--disable-features=VizDisplayCompositor")
+    options.add_argument("--disable-web-security")
+    options.add_argument("--dns-prefetch-disable")
+    options.add_argument("--disable-hang-monitor")
 
     # 从环境变量获取电表查询参数
     wechat_user_openid = os.environ.get("METER_OPENID")
@@ -128,18 +154,15 @@ def get_meter_balance():
 
     for attempt in range(retry_count):
         try:
-            if driver:
-                try:
-                    driver.quit()
-                except:
-                    pass
-                driver = None
-                time.sleep(5)  # 等待之前的浏览器实例完全关闭
+            # 安全关闭之前可能存在的实例
+            driver = safely_quit_driver(driver, logger)
+            time.sleep(3)  # 等待之前的浏览器实例完全关闭
 
             logger.info(f"尝试第 {attempt + 1} 次连接...")
+            service = EdgeService()
             driver = webdriver.Edge(service=service, options=options)
-            driver.set_page_load_timeout(300)
-            driver.set_script_timeout(300)
+            driver.set_page_load_timeout(60)  # 减少超时时间，防止长时间卡住
+            driver.set_script_timeout(60)
 
             logger.info("开始访问页面...")
             url = "https://zndk-443.webvpn.tjise.edu.cn/electricmeter/index.html#/pages/meterlist/meterquery"
@@ -153,45 +176,60 @@ def get_meter_balance():
 
             # 尝试多次加载页面
             page_load_attempts = 3
+            page_loaded = False
+
             for page_attempt in range(page_load_attempts):
                 try:
+                    logger.info(f"第 {page_attempt + 1} 次尝试加载页面...")
                     driver.get(full_url)
-                    break
-                except Exception as e:
+                    # 检查页面是否成功加载
+                    if "electricmeter" in driver.current_url:
+                        page_loaded = True
+                        logger.info("页面成功加载")
+                        break
+                except WebDriverException as e:
                     if page_attempt == page_load_attempts - 1:
+                        logger.error(f"所有页面加载尝试均失败: {str(e)}")
                         raise
                     logger.warning(
-                        f"页面加载失败 ({page_attempt + 1}/{page_load_attempts})"
+                        f"页面加载失败 ({page_attempt + 1}/{page_load_attempts}): {str(e)}"
                     )
                     time.sleep(5)
 
+            if not page_loaded:
+                raise Exception("页面加载失败，URL加载不完整")
+
             logger.info("等待页面初始加载...")
-            time.sleep(15)
+            time.sleep(10)  # 减少等待时间，避免浏览器闲置太久自动关闭
 
             logger.info("等待查询按钮出现...")
-            wait = WebDriverWait(driver, 30)
-            query_button = wait.until(
-                EC.element_to_be_clickable(
-                    (
-                        By.XPATH,
-                        "/html/body/uni-app/uni-page/uni-page-wrapper/uni-page-body/uni-view/uni-view[1]/uni-button",
+            wait = WebDriverWait(driver, 20)  # 减少等待时间
+
+            try:
+                query_button = wait.until(
+                    EC.element_to_be_clickable(
+                        (
+                            By.XPATH,
+                            "/html/body/uni-app/uni-page/uni-page-wrapper/uni-page-body/uni-view/uni-view[1]/uni-button",
+                        )
                     )
                 )
-            )
 
-            logger.info("找到查询按钮，准备点击...")
-            try:
-                # 使用JavaScript点击按钮
-                driver.execute_script("arguments[0].click();", query_button)
-            except:
-                # 如果JavaScript点击失败，尝试直接点击
-                query_button.click()
+                logger.info("找到查询按钮，准备点击...")
+                try:
+                    # 使用JavaScript点击按钮
+                    driver.execute_script("arguments[0].click();", query_button)
+                    logger.info("使用JavaScript成功点击查询按钮")
+                except Exception as js_error:
+                    logger.warning(f"JavaScript点击失败: {str(js_error)}，尝试直接点击")
+                    # 如果JavaScript点击失败，尝试直接点击
+                    query_button.click()
+                    logger.info("使用直接点击成功点击查询按钮")
 
-            logger.info("已点击查询按钮")
-            time.sleep(8)
+                logger.info("已点击查询按钮，等待数据加载...")
+                time.sleep(5)  # 减少等待时间
 
-            logger.info("尝试获取电表剩余值...")
-            try:
+                logger.info("尝试获取电表剩余值...")
                 input_element = wait.until(
                     EC.presence_of_element_located(
                         (By.CSS_SELECTOR, "uni-input input.uni-input-input")
@@ -204,34 +242,41 @@ def get_meter_balance():
                     logger.info(f"获取到电表剩余值: {balance}")
                     # 转换余额为浮点数并检查
                     balance_float = float(balance)
-                    if balance_float < 50:  # 设置为2度阈值，与README中描述一致
+                    if balance_float < 50:  # 设置为50度阈值
                         logger.warning(f"电量低于50度 ({balance})，发送警告邮件...")
                         send_alert_email(balance)
                     return balance
                 else:
-                    logger.warning("未能获取到电表余额值")
-                    raise Exception("电表余额获取失败")
-            except Exception as e:
-                logger.error(f"获取电表余额时出错: {str(e)}")
-                raise
+                    logger.warning("输入元素存在但未能获取到电表余额值")
+                    raise Exception("电表余额获取失败：输入框值为空")
+
+            except (TimeoutException, NoSuchElementException) as e:
+                logger.error(f"查找元素超时或元素不存在: {str(e)}")
+                # 尝试截图保存错误状态
+                try:
+                    screenshot_path = os.path.join(
+                        os.path.dirname(os.path.abspath(__file__)),
+                        f"error_screenshot_{attempt}.png",
+                    )
+                    driver.save_screenshot(screenshot_path)
+                    logger.info(f"已保存错误截图: {screenshot_path}")
+                except Exception as ss_error:
+                    logger.warning(f"保存截图失败: {str(ss_error)}")
+                raise Exception(f"查找元素失败: {str(e)}")
 
         except Exception as e:
             logger.error(f"第 {attempt + 1} 次尝试失败: {str(e)}")
+            logger.error(f"错误详情: {traceback.format_exc()}")
+
+            # 安全关闭当前driver实例
+            driver = safely_quit_driver(driver, logger)
+
             if attempt < retry_count - 1:
                 logger.info("等待10秒后重试...")
                 time.sleep(10)
             else:
                 logger.error("已达到最大重试次数，退出...")
                 return None
-
-        finally:
-            try:
-                if driver:
-                    logger.info("关闭浏览器...")
-                    driver.quit()
-            except Exception as e:
-                logger.error(f"关闭浏览器时出错: {str(e)}")
-            driver = None
 
     return None
 
@@ -279,6 +324,7 @@ def main():
 
     except Exception as e:
         print(f"程序执行出错: {str(e)}")
+        print(f"错误详情: {traceback.format_exc()}")
         return 1
 
 
