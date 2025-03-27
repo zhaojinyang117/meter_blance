@@ -15,7 +15,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import logging
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import os
 import sys
 import traceback
@@ -68,16 +68,19 @@ def send_alert_email(balance):
         logging.warning("邮箱配置不完整，无法发送警告邮件")
         return False
 
+    # 获取北京时间
+    beijing_time = datetime.now(timezone.utc).astimezone(timezone(timedelta(hours=8)))
+
     # 创建邮件内容
     message = MIMEMultipart()
     message["From"] = sender_email
     message["To"] = receiver_email
-    message["Subject"] = f"电表余额不足警告 - {datetime.now().strftime('%Y-%m-%d')}"
+    message["Subject"] = f"电表余额不足警告 - {beijing_time.strftime('%Y-%m-%d')}"
 
     body = f"""
     警告：当前电表余额为 {balance} 度，已低于50度，请及时充值！
     
-    此邮件由GitHub Actions自动发送于 {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+    此邮件由GitHub Actions自动发送于 {beijing_time.strftime("%Y-%m-%d %H:%M:%S")} (北京时间)
     """
     message.attach(MIMEText(body, "plain"))
 
@@ -287,7 +290,12 @@ def main():
         # 设置日志
         logger = setup_logging()
         logger.info("=== GitHub Actions 电表余额查询脚本开始执行 ===")
-        logger.info(f"执行时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
+        # 获取北京时间（UTC+8）
+        beijing_time = datetime.now(timezone.utc).astimezone(
+            timezone(timedelta(hours=8))
+        )
+        logger.info(f"执行时间(北京): {beijing_time.strftime('%Y-%m-%d %H:%M:%S')}")
 
         # 检查必要的环境变量
         required_env_vars = [
