@@ -153,6 +153,12 @@ jobs:
         echo "使用Wrangler部署到Cloudflare Pages..."
         echo "使用的账号ID: $CLOUDFLARE_ACCOUNT_ID"
         
-        # 使用--project-name参数部署（会自动创建项目）
-        # 添加--new参数强制创建新项目
-        wrangler pages deploy dist --project-name=meter-balance-monitor --new --commit-dirty=true
+        # 使用--project-name参数部署
+        # 添加--commit-dirty=true参数忽略未提交的更改警告
+        # 首先尝试创建项目
+        echo "尝试创建项目..."
+        wrangler pages project create meter-balance-monitor || true
+        
+        # 然后部署
+        echo "部署项目..."
+        wrangler pages deploy dist --project-name=meter-balance-monitor --commit-dirty=true
