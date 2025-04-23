@@ -12,7 +12,6 @@
 - 支持本地运行和GitHub Actions自动运行
 - 完整的日志记录和错误处理
 - 无需人工干预的自动化流程
-- Cloudflare Pages可视化网站展示用电数据和统计信息
 
 ## GitHub Actions 部署步骤
 
@@ -69,11 +68,6 @@
 - `meter_balance_action.py`: 为GitHub Actions环境优化的脚本
 - `requirements.txt`: 依赖项列表
 - `.github/workflows/meter_balance.yml`: GitHub Actions工作流配置
-- `.github/workflows/cloudflare_deploy.yml`: Cloudflare Pages部署工作流配置
-- `index.html`, `styles.css`, `script.js`: Cloudflare Pages网站前端文件
-- `update_meter_data.py`: 更新电表数据的脚本
-- `data.json`: 存储电表余额历史数据的JSON文件
-- `CLOUDFLARE_README.md`: Cloudflare Pages网站部署和使用说明
 
 ## 项目简介
 这是一个自动化的电表余额查询系统，专门为天津市大学软件学院学生公寓设计。系统会自动访问学校的电表查询网页，获取电表余额，并在余额低于50度时通过Gmail发送邮件提醒。
@@ -193,34 +187,3 @@ python "meter balance.py"
    - 检查网络连接
    - 验证电表参数是否正确
    - 查看日志文件了解具体错误原因
-
-## Cloudflare Pages 可视化网站
-
-本项目包含一个基于Cloudflare Pages的可视化网站，用于展示电表余额和用电量数据。
-
-### 主要功能
-
-- 实时显示当前电表余额
-- 展示近7天的用电量图表
-- 显示余额变化趋势
-- 计算平均日用电量
-- 预估剩余电量可用天数
-- 详细的历史数据表格
-
-### 部署方法
-
-1. 在GitHub仓库中添加以下Secrets:
-   - `CLOUDFLARE_API_TOKEN`: Cloudflare API令牌
-   - `CLOUDFLARE_ACCOUNT_ID`: Cloudflare账号ID
-
-2. 手动触发 `电表余额监控网站部署` 工作流进行初始部署
-
-详细的部署和配置说明请参考 [CLOUDFLARE_README.md](CLOUDFLARE_README.md)。
-
-### 工作原理
-
-1. GitHub Actions每天运行电表余额查询
-2. 查询完成后自动触发Cloudflare Pages部署工作流
-3. 部署工作流从日志中提取电表余额数据并更新JSON文件
-4. 将网站文件部署到Cloudflare Pages
-5. 网站通过JavaScript从JSON文件中读取数据并生成图表和统计信息

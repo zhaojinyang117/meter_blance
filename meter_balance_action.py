@@ -325,8 +325,6 @@ def main():
             logger.info(f"查询完成，电表余额: {result}度")
             # 将结果写入GitHub Actions输出
             print(f"::set-output name=balance::{result}")
-            # 添加一个特殊格式的日志，方便后续提取
-            logger.info(f"===METER_BALANCE_RESULT===电表余额: {result}度===")
             return 0
         else:
             logger.error("查询失败，未能获取电表余额")
