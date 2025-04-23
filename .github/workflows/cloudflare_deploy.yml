@@ -102,6 +102,39 @@ jobs:
     - name: 安装Wrangler CLI
       run: npm install -g wrangler
       
+    - name: 验证Cloudflare凭据
+      env:
+        CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      run: |
+        echo "验证Cloudflare账号ID和API令牌..."
+        echo "账号ID长度: ${#CLOUDFLARE_ACCOUNT_ID}"
+        echo "API令牌长度: ${#CLOUDFLARE_API_TOKEN}"
+        
+        # 检查环境变量是否设置
+        if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+          echo "错误: CLOUDFLARE_API_TOKEN 未设置"
+          exit 1
+        fi
+        
+        if [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+          echo "错误: CLOUDFLARE_ACCOUNT_ID 未设置"
+          exit 1
+        fi
+        
+        # 验证API令牌
+        echo "尝试验证API令牌..."
+        curl -s -X GET "https://api.cloudflare.com/client/v4/user/tokens/verify" \
+          -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+          -H "Content-Type: application/json" | grep -q "\"success\":true"
+        
+        if [ $? -eq 0 ]; then
+          echo "API令牌验证成功"
+        else
+          echo "API令牌验证失败，请检查令牌是否有效且具有足够的权限"
+          exit 1
+        fi
+
     - name: 部署到Cloudflare Pages
       env:
         CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -116,14 +149,9 @@ jobs:
         cp script.js dist/
         cp data.json dist/
         
-        # 检查项目是否存在，如果不存在则创建
-        echo "检查Cloudflare Pages项目是否存在..."
-        if ! wrangler pages project list | grep -q "meter-balance-monitor"; then
-          echo "项目不存在，创建新项目..."
-          wrangler pages project create meter-balance-monitor --production-branch=main
-        else
-          echo "项目已存在，继续部署..."
-        fi
+        # 直接使用Wrangler部署（自动创建项目）
+        echo "使用Wrangler部署到Cloudflare Pages..."
+        echo "使用的账号ID: $CLOUDFLARE_ACCOUNT_ID"
         
-        # 使用Wrangler部署到Cloudflare Pages
-        wrangler pages deploy dist --project-name=meter-balance-monitor --branch=main
+        # 使用--project-name参数部署（会自动创建项目）
+        wrangler pages deploy dist --project-name=meter-balance-monitor
