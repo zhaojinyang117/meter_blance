@@ -246,4 +246,5 @@ jobs:
         
         # 然后部署
         echo "部署项目..."
-        wrangler pages deploy dist --project-name=meter-balance-monitor --commit-dirty=true
+        # 使用--branch=main参数指定为生产部署，这样自定义域名会指向这个部署
+        wrangler pages deploy dist --project-name=meter-balance-monitor --commit-dirty=true --branch=main
