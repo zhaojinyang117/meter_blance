@@ -157,7 +157,11 @@ jobs:
         # 添加--commit-dirty=true参数忽略未提交的更改警告
         # 首先尝试创建项目
         echo "尝试创建项目..."
-        wrangler pages project create meter-balance-monitor || true
+        wrangler pages project create meter-balance-monitor --production-branch=main
+        
+        # 等待几秒钟让API处理请求
+        echo "等待项目创建完成..."
+        sleep 5
         
         # 然后部署
         echo "部署项目..."
