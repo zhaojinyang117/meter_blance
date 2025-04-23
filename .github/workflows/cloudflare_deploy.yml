@@ -154,4 +154,5 @@ jobs:
         echo "使用的账号ID: $CLOUDFLARE_ACCOUNT_ID"
         
         # 使用--project-name参数部署（会自动创建项目）
-        wrangler pages deploy dist --project-name=meter-balance-monitor
+        # 添加--new参数强制创建新项目
+        wrangler pages deploy dist --project-name=meter-balance-monitor --new --commit-dirty=true
