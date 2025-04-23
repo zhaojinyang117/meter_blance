@@ -40,6 +40,7 @@ def update_data(data, balance):
     # 获取北京时间
     beijing_time = datetime.now(timezone.utc).astimezone(timezone(timedelta(hours=8)))
     today_date = beijing_time.strftime("%Y-%m-%d")
+    current_time = beijing_time.strftime("%Y-%m-%d %H:%M:%S")
     
     # 检查今天是否已有记录
     for entry in data["daily_data"]:
@@ -47,6 +48,9 @@ def update_data(data, balance):
             # 更新今天的记录
             entry["balance"] = float(balance)
             logging.info(f"更新今天 ({today_date}) 的记录: {balance} 度")
+            # 更新最后更新时间
+            data["last_updated"] = current_time
+            logging.info(f"更新最后更新时间: {current_time}")
             return data
     
     # 如果今天没有记录，添加新记录
@@ -56,6 +60,10 @@ def update_data(data, balance):
     }
     data["daily_data"].append(new_entry)
     logging.info(f"添加今天 ({today_date}) 的新记录: {balance} 度")
+    
+    # 更新最后更新时间
+    data["last_updated"] = current_time
+    logging.info(f"更新最后更新时间: {current_time}")
     
     return data
 

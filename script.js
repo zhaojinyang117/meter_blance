@@ -299,8 +299,14 @@ function updateTable() {
 
 // 更新最后更新时间
 function updateLastUpdated() {
-    const now = new Date();
-    const formattedDate = now.toLocaleDateString('zh-CN');
-    const formattedTime = now.toLocaleTimeString('zh-CN');
-    document.getElementById('last-updated').textContent = `${formattedDate} ${formattedTime}`;
+    if (meterData && meterData.last_updated) {
+        // 使用数据中的最后更新时间
+        const lastUpdated = new Date(meterData.last_updated);
+        const formattedDate = lastUpdated.toLocaleDateString('zh-CN');
+        const formattedTime = lastUpdated.toLocaleTimeString('zh-CN');
+        document.getElementById('last-updated').textContent = `${formattedDate} ${formattedTime}`;
+    } else {
+        // 如果没有最后更新时间，显示"未知"
+        document.getElementById('last-updated').textContent = "未知";
+    }
 }
