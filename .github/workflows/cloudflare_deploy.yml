@@ -224,6 +224,7 @@ jobs:
         cp styles.css dist/
         cp script.js dist/
         cp data.json dist/
+        cp favicon.svg dist/
         
         # 直接使用Wrangler部署（自动创建项目）
         echo "使用Wrangler部署到Cloudflare Pages..."

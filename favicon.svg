@@ -1,23 +1,25 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-  <!-- 外圆框 -->
-  <circle cx="16" cy="16" r="15" fill="#ffffff" stroke="#4a6fa5" stroke-width="2"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- 主背景 -->
+  <circle cx="50" cy="50" r="45" fill="#f7f9fa"/>
   
-  <!-- 电表显示屏 -->
-  <rect x="8" y="10" width="16" height="8" rx="2" fill="#f5f7fa" stroke="#166088" stroke-width="1"/>
+  <!-- 电表圆形 -->
+  <circle cx="45" cy="45" r="25" fill="white" stroke="#3498db" stroke-width="2.5"/>
   
-  <!-- 电表数字显示 -->
-  <text x="16" y="16.5" font-family="Arial, sans-serif" font-size="6" font-weight="bold" fill="#166088" text-anchor="middle" dominant-baseline="middle">kWh</text>
+  <!-- 电表指针 -->
+  <path d="M45 45 L60 30" stroke="#e74c3c" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="45" cy="45" r="3" fill="#e74c3c"/>
   
-  <!-- 电量指示条 -->
-  <rect x="9" y="20" width="14" height="3" rx="1" fill="#f5f7fa" stroke="#166088" stroke-width="1"/>
-  
-  <!-- 电量状态 (约70%) -->
-  <rect x="9" y="20" width="10" height="3" rx="1" fill="#4cb5f5"/>
+  <!-- 电表刻度 -->
+  <path d="M45 25 L45 30" stroke="#34495e" stroke-width="1.5"/>
+  <path d="M65 45 L60 45" stroke="#34495e" stroke-width="1.5"/>
+  <path d="M45 65 L45 60" stroke="#34495e" stroke-width="1.5"/>
+  <path d="M25 45 L30 45" stroke="#34495e" stroke-width="1.5"/>
   
   <!-- 闪电符号 -->
-  <path d="M15.5,6 L13,12 L16,12 L14.5,18 L17,14 L14,14 L15.5,6 Z" fill="#4a6fa5"/>
+  <path d="M40 40 L50 40 L45 55 L53 50 L40 60 L45 45 L37 45 Z" fill="#f1c40f"/>
   
-  <!-- 图表元素 - 折线 -->
-  <polyline points="6,24 9,22 12,23 15,21 18,22 21,20 24,21 26,19" stroke="#4cb5f5" stroke-width="1.5" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
-</svg> 
+  <!-- 放大镜(查询元素) -->
+  <circle cx="70" cy="65" r="15" fill="white" stroke="#3498db" stroke-width="2.5"/>
+  <circle cx="70" cy="65" r="10" fill="#f7f9fa"/>
+  <line x1="82" y1="77" x2="90" y2="85" stroke="#3498db" stroke-width="3" stroke-linecap="round"/>
+</svg>
