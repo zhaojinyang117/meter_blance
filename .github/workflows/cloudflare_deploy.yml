@@ -20,7 +20,7 @@ jobs:
     - name: 检出代码
       uses: actions/checkout@v4
       
-    - name: 下载电表余额日志
+    - name: 下载电表余额日志（从触发的工作流）
       if: ${{ github.event_name == 'workflow_run' }}
       uses: actions/github-script@v7
       with:
@@ -50,9 +50,70 @@ jobs:
           const fs = require('fs');
           fs.writeFileSync('logs.zip', Buffer.from(download.data));
           
+    - name: 下载最新电表余额日志（手动触发时）
+      if: ${{ github.event_name == 'workflow_dispatch' }}
+      uses: actions/github-script@v7
+      with:
+        script: |
+          console.log('尝试获取最新的电表余额查询工作流运行...');
+          
+          // 获取最新的成功运行的电表余额查询工作流
+          const workflowRuns = await github.rest.actions.listWorkflowRuns({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            workflow_id: 'meter_balance.yml',
+            status: 'success',
+            per_page: 1
+          });
+          
+          if (workflowRuns.data.total_count === 0) {
+            console.log('未找到成功运行的电表余额查询工作流');
+            return;
+          }
+          
+          const latestRun = workflowRuns.data.workflow_runs[0];
+          console.log(`找到最新成功运行: ${latestRun.id}, 完成于 ${latestRun.updated_at}`);
+          
+          // 获取该运行的构件
+          const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            run_id: latestRun.id
+          });
+          
+          const matchArtifact = artifacts.data.artifacts.find(artifact => {
+            return artifact.name == "logs"
+          });
+          
+          if (!matchArtifact) {
+            console.log('未找到日志文件构件');
+            return;
+          }
+          
+          console.log(`找到日志构件: ${matchArtifact.id}`);
+          
+          // 下载构件
+          const download = await github.rest.actions.downloadArtifact({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            artifact_id: matchArtifact.id,
+            archive_format: 'zip'
+          });
+          
+          const fs = require('fs');
+          fs.writeFileSync('logs.zip', Buffer.from(download.data));
+          console.log('成功下载日志文件');
+          
     - name: 解压日志文件
-      if: ${{ github.event_name == 'workflow_run' }}
-      run: unzip -o logs.zip
+      if: ${{ github.event_name == 'workflow_run' || github.event_name == 'workflow_dispatch' }}
+      run: |
+        if [ -f "logs.zip" ]; then
+          echo "解压日志文件..."
+          unzip -o logs.zip
+          echo "日志文件解压完成"
+        else
+          echo "未找到日志文件压缩包"
+        fi
       
     - name: 提取电表余额
       if: ${{ github.event_name == 'workflow_run' }}
@@ -73,13 +134,28 @@ jobs:
           exit 1
         fi
         
-    - name: 手动设置测试余额（仅用于手动触发）
+    - name: 获取真实或测试余额（手动触发时）
       if: ${{ github.event_name == 'workflow_dispatch' }}
       id: manual_balance
       run: |
-        # 这里设置一个测试值，仅用于手动触发时测试部署
-        echo "balance=285.78" >> $GITHUB_OUTPUT
-        echo "使用测试电表余额: 285.78"
+        # 尝试从最近的日志中获取真实数据
+        if [ -f "meter_balance.log" ]; then
+          echo "尝试从现有日志文件中提取真实电表余额..."
+          BALANCE=$(grep "===METER_BALANCE_RESULT===" meter_balance.log | tail -1 | grep -o "电表余额: [0-9.]*度" | grep -o "[0-9.]*")
+          
+          if [ -n "$BALANCE" ]; then
+            echo "成功从日志中提取到真实电表余额: $BALANCE"
+            echo "balance=$BALANCE" >> $GITHUB_OUTPUT
+          else
+            echo "未能从日志中提取到真实电表余额，使用测试值"
+            echo "balance=285.78" >> $GITHUB_OUTPUT
+            echo "使用测试电表余额: 285.78"
+          fi
+        else
+          echo "日志文件不存在，使用测试值"
+          echo "balance=285.78" >> $GITHUB_OUTPUT
+          echo "使用测试电表余额: 285.78"
+        fi
         
     - name: 设置Python环境
       uses: actions/setup-python@v5
