@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>电表余额监控</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>电表余额监控</h1>
+            <p class="last-updated">最后更新: <span id="last-updated">加载中...</span></p>
+        </header>
+
+        <div class="dashboard">
+            <div class="card current-balance">
+                <h2>当前余额</h2>
+                <div class="balance-value" id="current-balance">--</div>
+                <div class="unit">度</div>
+            </div>
+            
+            <div class="card daily-usage">
+                <h2>昨日消耗</h2>
+                <div class="usage-value" id="yesterday-usage">--</div>
+                <div class="unit">度</div>
+            </div>
+            
+            <div class="card avg-usage">
+                <h2>7日平均</h2>
+                <div class="usage-value" id="avg-usage">--</div>
+                <div class="unit">度/天</div>
+            </div>
+            
+            <div class="card estimated-days">
+                <h2>预计可用</h2>
+                <div class="days-value" id="estimated-days">--</div>
+                <div class="unit">天</div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <h2>近7日用电量</h2>
+            <canvas id="usageChart"></canvas>
+        </div>
+
+        <div class="chart-container">
+            <h2>余额变化趋势</h2>
+            <canvas id="balanceChart"></canvas>
+        </div>
+
+        <div class="data-table">
+            <h2>详细数据</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>日期</th>
+                        <th>余额 (度)</th>
+                        <th>用电量 (度)</th>
+                    </tr>
+                </thead>
+                <tbody id="data-table-body">
+                    <!-- 数据将通过JavaScript动态填充 -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <footer>
+        <p>电表余额监控系统 &copy; 2025</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
