@@ -116,5 +116,14 @@ jobs:
         cp script.js dist/
         cp data.json dist/
         
+        # 检查项目是否存在，如果不存在则创建
+        echo "检查Cloudflare Pages项目是否存在..."
+        if ! wrangler pages project list | grep -q "meter-balance-monitor"; then
+          echo "项目不存在，创建新项目..."
+          wrangler pages project create meter-balance-monitor --production-branch=main
+        else
+          echo "项目已存在，继续部署..."
+        fi
+        
         # 使用Wrangler部署到Cloudflare Pages
         wrangler pages deploy dist --project-name=meter-balance-monitor --branch=main
