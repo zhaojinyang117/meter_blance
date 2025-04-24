@@ -264,7 +264,19 @@ function updateTable() {
     const tableBody = document.getElementById('data-table-body');
     tableBody.innerHTML = '';
 
-    // 按日期排序（最新的在前面）
+    // 1. 首先按日期排序（升序）
+    const chronologicalData = [...meterData.daily_data].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    // 2. 预先计算每个日期的用电量 (当前日期的用电量 = 前一天余额 - 当前余额)
+    const dateToUsageMap = {};
+    for (let i = 1; i < chronologicalData.length; i++) {
+        const currentEntry = chronologicalData[i];
+        const prevEntry = chronologicalData[i - 1];
+        const usage = Math.max(0, prevEntry.balance - currentEntry.balance);
+        dateToUsageMap[currentEntry.date] = usage;
+    }
+
+    // 3. 按日期排序（最新的在前面）用于显示
     const sortedData = [...meterData.daily_data].sort((a, b) => new Date(b.date) - new Date(a.date));
 
     for (let i = 0; i < sortedData.length; i++) {
@@ -272,11 +284,8 @@ function updateTable() {
         const date = new Date(data.date);
         const formattedDate = date.toLocaleDateString('zh-CN');
 
-        // 计算用电量
-        let usage = 0;
-        if (i < sortedData.length - 1) {
-            usage = Math.max(0, sortedData[i + 1].balance - data.balance);
-        }
+        // 获取这一天的用电量
+        const usage = dateToUsageMap[data.date] || 0;
 
         const row = document.createElement('tr');
 
@@ -287,7 +296,7 @@ function updateTable() {
         balanceCell.textContent = data.balance.toFixed(2);
 
         const usageCell = document.createElement('td');
-        usageCell.textContent = i < sortedData.length - 1 ? usage.toFixed(2) : '-';
+        usageCell.textContent = dateToUsageMap[data.date] !== undefined ? usage.toFixed(2) : '-';
 
         row.appendChild(dateCell);
         row.appendChild(balanceCell);
