@@ -99,8 +99,6 @@ jobs:
           # 提交变更
           git commit -m "自动更新电表数据 - $BEIJING_TIME"
 
-          # 推送到仓库
+          # 使用PAT推送到仓库
+          git remote set-url origin https://${{ secrets.REPO_ACCESS_TOKEN }}@github.com/zhaojinyang117/meter_blance.git
           git push
-        env:
-          # 使用GitHub提供的token进行推送
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
