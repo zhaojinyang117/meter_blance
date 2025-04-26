@@ -6,6 +6,10 @@ on:
     - cron: "30 13 * * *"
   workflow_dispatch: # 允许手动触发工作流
 
+# 显式设置权限
+permissions:
+  contents: write
+
 jobs:
   check-meter-balance:
     runs-on: ubuntu-latest
@@ -14,6 +18,9 @@ jobs:
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
+        with:
+          # 确保获取完整的git历史，这对于后续的git操作很重要
+          fetch-depth: 0
 
       - name: 设置Python环境
         uses: actions/setup-python@v5
@@ -99,6 +106,17 @@ jobs:
           # 提交变更
           git commit -m "自动更新电表数据 - $BEIJING_TIME"
 
-          # 使用PAT推送到仓库
-          git remote set-url origin https://${{ secrets.REPO_ACCESS_TOKEN }}@github.com/zhaojinyang117/meter_blance.git
+          # 使用Actions内置的GITHUB_TOKEN推送
+          git push
+        env:
+          # 使用默认的GITHUB_TOKEN
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # 如果上面的推送失败，尝试使用PAT推送
+      - name: 使用PAT推送变更（备选方案）
+        if: steps.check_changes.outputs.has_changes == 'true' && failure()
+        run: |
+          # 配置远程URL使用PAT
+          git remote set-url origin "https://${{ secrets.REPO_ACCESS_TOKEN }}@github.com/${{ github.repository }}.git"
+          # 推送
           git push
