@@ -327,6 +327,37 @@ def main():
             print(f"::set-output name=balance::{result}")
             # 添加一个特殊格式的日志，方便后续提取
             logger.info(f"===METER_BALANCE_RESULT===电表余额: {result}度===")
+            
+            # 更新data.json文件
+            try:
+                logger.info("开始更新电表数据文件...")
+                import subprocess
+                
+                # 调用update_meter_data.py脚本更新数据
+                update_cmd = [sys.executable, "update_meter_data.py", result]
+                logger.info(f"执行命令: {' '.join(update_cmd)}")
+                
+                # 运行更新脚本
+                process = subprocess.run(
+                    update_cmd,
+                    capture_output=True,
+                    text=True,
+                    check=True
+                )
+                
+                # 记录脚本输出
+                if process.stdout:
+                    logger.info(f"更新脚本输出: {process.stdout}")
+                
+                logger.info("电表数据文件更新成功")
+            except subprocess.CalledProcessError as e:
+                logger.error(f"更新电表数据文件失败: {str(e)}")
+                logger.error(f"脚本错误输出: {e.stderr}")
+                # 即使更新失败，也不影响整体流程
+            except Exception as e:
+                logger.error(f"更新电表数据文件时发生错误: {str(e)}")
+                # 即使更新失败，也不影响整体流程
+            
             return 0
         else:
             logger.error("查询失败，未能获取电表余额")
