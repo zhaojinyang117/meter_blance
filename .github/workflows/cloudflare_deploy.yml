@@ -15,11 +15,11 @@ jobs:
     # 只有当触发的工作流成功完成时才运行
     if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     environment: 电表  # 使用与电表余额查询相同的环境
-    
+
     steps:
     - name: 检出代码
       uses: actions/checkout@v4
-      
+
     - name: 下载电表余额日志（从触发的工作流）
       if: ${{ github.event_name == 'workflow_run' }}
       uses: actions/github-script@v7
@@ -30,33 +30,33 @@ jobs:
             repo: context.repo.repo,
             run_id: ${{ github.event.workflow_run.id }}
           });
-          
+
           const matchArtifact = artifacts.data.artifacts.find(artifact => {
             return artifact.name == "logs"
           });
-          
+
           if (!matchArtifact) {
             core.setFailed('未找到日志文件');
             return;
           }
-          
+
           const download = await github.rest.actions.downloadArtifact({
             owner: context.repo.owner,
             repo: context.repo.repo,
             artifact_id: matchArtifact.id,
             archive_format: 'zip'
           });
-          
+
           const fs = require('fs');
           fs.writeFileSync('logs.zip', Buffer.from(download.data));
-          
+
     - name: 下载最新电表余额日志（手动触发时）
       if: ${{ github.event_name == 'workflow_dispatch' }}
       uses: actions/github-script@v7
       with:
         script: |
           console.log('尝试获取最新的电表余额查询工作流运行...');
-          
+
           // 获取最新的成功运行的电表余额查询工作流
           const workflowRuns = await github.rest.actions.listWorkflowRuns({
             owner: context.repo.owner,
@@ -65,33 +65,33 @@ jobs:
             status: 'success',
             per_page: 1
           });
-          
+
           if (workflowRuns.data.total_count === 0) {
             console.log('未找到成功运行的电表余额查询工作流');
             return;
           }
-          
+
           const latestRun = workflowRuns.data.workflow_runs[0];
           console.log(`找到最新成功运行: ${latestRun.id}, 完成于 ${latestRun.updated_at}`);
-          
+
           // 获取该运行的构件
           const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
             owner: context.repo.owner,
             repo: context.repo.repo,
             run_id: latestRun.id
           });
-          
+
           const matchArtifact = artifacts.data.artifacts.find(artifact => {
             return artifact.name == "logs"
           });
-          
+
           if (!matchArtifact) {
             console.log('未找到日志文件构件');
             return;
           }
-          
+
           console.log(`找到日志构件: ${matchArtifact.id}`);
-          
+
           // 下载构件
           const download = await github.rest.actions.downloadArtifact({
             owner: context.repo.owner,
@@ -99,11 +99,11 @@ jobs:
             artifact_id: matchArtifact.id,
             archive_format: 'zip'
           });
-          
+
           const fs = require('fs');
           fs.writeFileSync('logs.zip', Buffer.from(download.data));
           console.log('成功下载日志文件');
-          
+
     - name: 解压日志文件
       if: ${{ github.event_name == 'workflow_run' || github.event_name == 'workflow_dispatch' }}
       run: |
@@ -114,7 +114,7 @@ jobs:
         else
           echo "未找到日志文件压缩包"
         fi
-      
+
     - name: 提取电表余额
       if: ${{ github.event_name == 'workflow_run' }}
       id: extract_balance
@@ -133,7 +133,7 @@ jobs:
           echo "日志文件不存在"
           exit 1
         fi
-        
+
     - name: 获取真实或测试余额（手动触发时）
       if: ${{ github.event_name == 'workflow_dispatch' }}
       id: manual_balance
@@ -142,7 +142,7 @@ jobs:
         if [ -f "meter_balance.log" ]; then
           echo "尝试从现有日志文件中提取真实电表余额..."
           BALANCE=$(grep "===METER_BALANCE_RESULT===" meter_balance.log | tail -1 | grep -o "电表余额: [0-9.]*度" | grep -o "[0-9.]*")
-          
+
           if [ -n "$BALANCE" ]; then
             echo "成功从日志中提取到真实电表余额: $BALANCE"
             echo "balance=$BALANCE" >> $GITHUB_OUTPUT
@@ -156,12 +156,12 @@ jobs:
           echo "balance=285.78" >> $GITHUB_OUTPUT
           echo "使用测试电表余额: 285.78"
         fi
-        
+
     - name: 设置Python环境
       uses: actions/setup-python@v5
       with:
         python-version: '3.10'
-        
+
     - name: 更新电表数据
       run: |
         if [ "${{ github.event_name }}" == "workflow_run" ]; then
@@ -169,15 +169,15 @@ jobs:
         else
           python update_meter_data.py ${{ steps.manual_balance.outputs.balance }}
         fi
-        
+
     - name: 设置Node.js环境
       uses: actions/setup-node@v4
       with:
-        node-version: '18'
-        
+        node-version: '20'
+
     - name: 安装Wrangler CLI
       run: npm install -g wrangler
-      
+
     - name: 验证Cloudflare凭据
       env:
         CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -186,24 +186,24 @@ jobs:
         echo "验证Cloudflare账号ID和API令牌..."
         echo "账号ID长度: ${#CLOUDFLARE_ACCOUNT_ID}"
         echo "API令牌长度: ${#CLOUDFLARE_API_TOKEN}"
-        
+
         # 检查环境变量是否设置
         if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
           echo "错误: CLOUDFLARE_API_TOKEN 未设置"
           exit 1
         fi
-        
+
         if [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
           echo "错误: CLOUDFLARE_ACCOUNT_ID 未设置"
           exit 1
         fi
-        
+
         # 验证API令牌
         echo "尝试验证API令牌..."
         curl -s -X GET "https://api.cloudflare.com/client/v4/user/tokens/verify" \
           -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
           -H "Content-Type: application/json" | grep -q "\"success\":true"
-        
+
         if [ $? -eq 0 ]; then
           echo "API令牌验证成功"
         else
@@ -218,18 +218,18 @@ jobs:
       run: |
         # 创建部署目录
         mkdir -p dist
-        
+
         # 复制网站文件到部署目录
         cp index.html dist/
         cp styles.css dist/
         cp script.js dist/
         cp data.json dist/
         cp favicon.svg dist/
-        
+
         # 直接使用Wrangler部署（自动创建项目）
         echo "使用Wrangler部署到Cloudflare Pages..."
         echo "使用的账号ID: $CLOUDFLARE_ACCOUNT_ID"
-        
+
         # 使用--project-name参数部署
         # 添加--commit-dirty=true参数忽略未提交的更改警告
         # 检查项目是否已存在
@@ -239,12 +239,12 @@ jobs:
         else
           echo "尝试创建项目..."
           wrangler pages project create meter-balance-monitor --production-branch=main
-          
+
           # 等待几秒钟让API处理请求
           echo "等待项目创建完成..."
           sleep 5
         fi
-        
+
         # 然后部署
         echo "部署项目..."
         # 使用--branch=main参数指定为生产部署，这样自定义域名会指向这个部署
