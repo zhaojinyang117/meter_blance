@@ -2,7 +2,7 @@ name: 电表余额查询
 
 on:
   schedule:
-    # 每天晚上21:30运行（UTC时间13:30）
+    # 每天晚上21:03运行（UTC时间13:03）
     - cron: "03 13 * * *"
   workflow_dispatch: # 允许手动触发工作流
 
